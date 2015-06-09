@@ -1,3 +1,39 @@
+/************************************************************************************/
+/* Copyright (c) 2012 The Department of Arts and Culture,                           */
+/* The Government of the Republic of South Africa.                                  */
+/*                                                                                  */
+/* Contributors:  Meraka Institute, CSIR, South Africa.                             */
+/*                                                                                  */
+/* Permission is hereby granted, free of charge, to any person obtaining a copy     */
+/* of this software and associated documentation files (the "Software"), to deal    */
+/* in the Software without restriction, including without limitation the rights     */
+/* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell        */
+/* copies of the Software, and to permit persons to whom the Software is            */
+/* furnished to do so, subject to the following conditions:                         */
+/* The above copyright notice and this permission notice shall be included in       */
+/* all copies or substantial portions of the Software.                              */
+/*                                                                                  */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR       */
+/* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,         */
+/* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE      */
+/* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER           */
+/* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,    */
+/* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN        */
+/* THE SOFTWARE.                                                                    */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* AUTHOR  : Aby Louw                                                               */
+/* DATE    : 14 May 2012                                                            */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* Added mixed excitation function interfaces, see code at end of file.             */
+/*                                                                                  */
+/*                                                                                  */
+/************************************************************************************/
+
+
 /* ----------------------------------------------------------------- */
 /*           The HMM-Based Speech Synthesis Engine "hts_engine API"  */
 /*           developed by HTS Working Group                          */
@@ -884,6 +920,104 @@ void HTS_Vocoder_postfilter_mcp(HTS_Vocoder * v, double *mcp, const int m,
 
 /* HTS_Vocoder_clear: clear vocoder */
 void HTS_Vocoder_clear(HTS_Vocoder * v);
+
+
+/************************************************************************************/
+/*                                                                                  */
+/* AUTHOR  : Aby Louw                                                               */
+/* DATE    : 14 May 2012                                                            */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* Mixed excitation function interfaces                                             */
+/*                                                                                  */
+/*                                                                                  */
+/************************************************************************************/
+
+/* HTS_Engine_load_me_filter_from_fn: load mixed excitation filter from file name */
+void HTS_Engine_load_me_filter_from_fn(char *me_filter_fn, double ***me_filter,
+									   int *me_num_filters, int *me_filter_order);
+
+/* HTS_Engine_load_pd_filter_from_fn: load pulse dispersion filter from file name */
+void HTS_Engine_load_pd_filter_from_fn(char *pd_filter_fn, double **pd_filter,
+									   int *pd_filter_order);
+
+/* HTS_Engine_create_gstream_me: synthesis speech (mixed excitation) */
+void HTS_Engine_create_gstream_me(HTS_Engine * engine,
+								  int me_num_filters, int me_filter_order, double **me_filter,
+								  double *xp_sig, double *xn_sig,
+								  double *hp, double *hn,
+								  double *pd_filter, int pd_filter_order);
+
+/* HTS_GStreamSet_create_me: generate speech (mixed excitation)
+ * stream[0] == spectrum
+ * stream[1] == lf0
+ * stream[2] == band strengths
+ */
+void HTS_GStreamSet_create_me(HTS_GStreamSet * gss, HTS_PStreamSet * pss,
+							  int stage, HTS_Boolean use_log_gain,
+							  int sampling_rate, int fperiod, double alpha,
+							  double beta,
+							  HTS_Boolean * stop, double volume, HTS_Audio * audio,
+							  int me_num_filters, int me_filter_order, double **me_filter,
+							  double *xp_sig, double *xn_sig,
+							  double *hp, double *hn,
+							  double *pd_filter, int pd_filter_order);
+
+/* HTS_Vocoder_ME: structure for setting of vocoder (mixed excitation) */
+typedef struct _HTS_Vocoder_ME {
+	HTS_Vocoder *v;                /* hts engine vocoder structure */
+
+	/* mixed excitation */
+	double  *xp_sig;         /* pulse signal, the size of this should be the filter order */
+	double  *xn_sig;         /* noise signal, the size of this should be the filter order */
+	double  *hp;             /* pulse shaping filter, size of the filter order            */
+    double  *hn;             /* noise shaping filter, size of the filter order            */
+	int      num_filters;    /* number of filters                                         */
+	int      filter_order;   /* filter order                                              */
+	double **h;              /* filter coefficients                                       */
+} HTS_Vocoder_ME;
+
+/* HTS_Vocoder_initialize_me: initialize vocoder (mixed excitation) */
+void HTS_Vocoder_initialize_me(HTS_Vocoder_ME * v_me, const int m, const int stage,
+							   HTS_Boolean use_log_gain, const int rate,
+							   const int fperiod,
+							   int num_filters, int filter_order, double **h,
+							   double *xp_sig, double *xn_sig,
+							   double *hp, double *hn);
+
+/* HTS_Vocoder_synthesize_me: mixed excitation and MLSA/MGLSA filster based waveform synthesis */
+void HTS_Vocoder_synthesize_me(HTS_Vocoder_ME * v_me, const int m, double lf0,
+							   double *spectrum, double *strengths, double alpha,
+							   double beta, double volume, short *rawdata, HTS_Audio * audio);
+
+/* HTS_Vocoder_clear_me: clear vocoder (mixed excitation) */
+void HTS_Vocoder_clear_me(HTS_Vocoder_ME * v_me);
+
+/*
+ * Helper functions used in Speect (lib/HTS_speect.c).
+ */
+
+/* HTS_Speect_ModelSet_get_nstate: get number of state */
+int HTS_Speect_ModelSet_get_nstate(HTS_Engine * engine);
+
+/* HTS_Speect_SStreamSet_get_duration: get state duration */
+int HTS_Speect_SStreamSet_get_duration(HTS_Engine * engine, int state_index);
+
+/* HTS_Speect_GStreamSet_get_total_nsample: get total number of sample */
+int HTS_Speect_GStreamSet_get_total_nsample(HTS_Engine * engine);
+
+/* HTS_Speect_GStreamSet_get_speech: get synthesized speech parameter */
+short HTS_Speect_GStreamSet_get_speech(HTS_Engine * engine, int sample_index);
+
+
+/************************************************************************************/
+/*                                                                                  */
+/* Mixed excitation function interfaces end                                         */
+/*                                                                                  */
+/*                                                                                  */
+/************************************************************************************/
+
 
 HTS_ENGINE_H_END;
 

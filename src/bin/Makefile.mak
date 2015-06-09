@@ -7,9 +7,13 @@ LFLAGS = /LTCG
 
 LIBS = ..\lib\hts_engine_API.lib winmm.lib
 
-all: hts_engine.exe
+all: hts_engine.exe hts_engine_me.exe
 
 hts_engine.exe : hts_engine.obj
+	$(CC) $(CFLAGS) /c $(@B).c
+	$(CL) $(LFLAGS) /OUT:$@ $(LIBS) $(@B).obj
+
+hts_engine_me.exe : hts_engine_me.obj
 	$(CC) $(CFLAGS) /c $(@B).c
 	$(CL) $(LFLAGS) /OUT:$@ $(LIBS) $(@B).obj
 

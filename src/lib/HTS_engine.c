@@ -1,3 +1,39 @@
+/************************************************************************************/
+/* Copyright (c) 2012 The Department of Arts and Culture,                           */
+/* The Government of the Republic of South Africa.                                  */
+/*                                                                                  */
+/* Contributors:  Meraka Institute, CSIR, South Africa.                             */
+/*                                                                                  */
+/* Permission is hereby granted, free of charge, to any person obtaining a copy     */
+/* of this software and associated documentation files (the "Software"), to deal    */
+/* in the Software without restriction, including without limitation the rights     */
+/* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell        */
+/* copies of the Software, and to permit persons to whom the Software is            */
+/* furnished to do so, subject to the following conditions:                         */
+/* The above copyright notice and this permission notice shall be included in       */
+/* all copies or substantial portions of the Software.                              */
+/*                                                                                  */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR       */
+/* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,         */
+/* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE      */
+/* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER           */
+/* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,    */
+/* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN        */
+/* THE SOFTWARE.                                                                    */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* AUTHOR  : Aby Louw                                                               */
+/* DATE    : 14 May 2012                                                            */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* Added mixed excitation, see code at end of file.                                 */
+/* function HTS_Engine_create_gstream_me                                            */
+/*                                                                                  */
+/************************************************************************************/
+
+
 /* ----------------------------------------------------------------- */
 /*           The HMM-Based Speech Synthesis Engine "hts_engine API"  */
 /*           developed by HTS Working Group                          */
@@ -56,6 +92,7 @@
 HTS_ENGINE_C_START;
 
 #include <string.h>             /* for strcpy() */
+#include <stdlib.h>             /* for atof()   */
 
 /* hts_engine libraries */
 #include "HTS_hidden.h"
@@ -843,6 +880,138 @@ void HTS_show_copyright(FILE * fp)
 
    return;
 }
+
+
+/************************************************************************************/
+/*                                                                                  */
+/* AUTHOR  : Aby Louw                                                               */
+/* DATE    : 14 May 2012                                                            */
+/*                                                                                  */
+/************************************************************************************/
+/*                                                                                  */
+/* Mixed excitation                                                                 */
+/*                                                                                  */
+/*                                                                                  */
+/************************************************************************************/
+
+/* HTS_Engine_create_gstream_me: synthesis speech (mixed excitation) */
+void HTS_Engine_create_gstream_me(HTS_Engine * engine,
+								  int me_num_filters, int me_filter_order, double **me_filter,
+								  double *xp_sig, double *xn_sig,
+								  double *hp, double *hn,
+								  double *pd_filter, int pd_filter_order)
+{
+	HTS_GStreamSet_create_me(&engine->gss, &engine->pss, engine->global.stage,
+							 engine->global.use_log_gain,
+							 engine->global.sampling_rate, engine->global.fperiod,
+							 engine->global.alpha, engine->global.beta,
+							 &engine->global.stop, engine->global.volume,
+							 engine->global.audio_buff_size >
+							 0 ? &engine->audio : NULL,
+							 me_num_filters, me_filter_order, me_filter,
+							 xp_sig, xn_sig, hp, hn,
+							 pd_filter, pd_filter_order);
+}
+
+
+#define ME_MAX_TOKEN_LENGTH 100
+
+/* HTS_Engine_load_me_filter_from_fn: load mixed excitation filter from file name */
+void HTS_Engine_load_me_filter_from_fn(char *me_filter_fn, double ***me_filter,
+									   int *me_num_filters, int *me_filter_order)
+{
+	int i;
+	int j;
+	FILE *me_fp;
+	char buff[ME_MAX_TOKEN_LENGTH];
+
+
+	me_fp = HTS_get_fp(me_filter_fn, "r");
+
+	HTS_get_token(me_fp, buff);
+	if (!isgraph((int) buff[0]))
+		HTS_error(1, "HTS_Engine_load_me_filter_from_fn: first token of file must be the number of filters.\n");
+
+	(*me_num_filters) = atoi(buff);
+	(*me_filter) = (double**)HTS_calloc((*me_num_filters), sizeof(double*));
+
+	HTS_get_token(me_fp, buff);
+	if (!isgraph((int) buff[0]))
+		HTS_error(1, "HTS_Engine_load_me_filter_from_fn: second token of file must be the filter order.\n");
+
+	(*me_filter_order) = atoi(buff);
+	for (i = 0; i < (*me_num_filters); i++)
+		(*me_filter)[i] = (double*)HTS_calloc((*me_filter_order), sizeof(double));
+
+	i = 0;
+	j = 0;
+	while (HTS_get_token(me_fp, buff))
+	{
+		if (!isgraph((int) buff[0]))
+		{
+			if ((i != (*me_num_filters)) && (j != 0))
+				HTS_error(1, "HTS_Engine_load_me_filter_from_fn: read token is not a graph, file format error.\n");
+			break;
+		}
+
+		(*me_filter)[i][j] = atof(buff);
+
+		j++;
+		if (j == (*me_filter_order))
+		{
+			i++;
+			j = 0;
+		}
+	}
+
+	fclose(me_fp);
+}
+
+
+/* HTS_Engine_load_pd_filter_from_fn: load pulse dispersion filter from file name */
+void HTS_Engine_load_pd_filter_from_fn(char *pd_filter_fn, double **pd_filter,
+									   int *pd_filter_order)
+{
+	int i;
+	FILE *pd_fp;
+	char buff[ME_MAX_TOKEN_LENGTH];
+
+
+	pd_fp = HTS_get_fp(pd_filter_fn, "r");
+
+	HTS_get_token(pd_fp, buff);
+	if (!isgraph((int) buff[0]))
+		HTS_error(1, "HTS_Engine_load_pd_filter_from_fn: first token of file must be the filter order.\n");
+
+	(*pd_filter_order) = atoi(buff);
+	(*pd_filter) = (double*)HTS_calloc((*pd_filter_order), sizeof(double));
+
+	i = 0;
+	while (HTS_get_token(pd_fp, buff))
+	{
+		if (!isgraph((int) buff[0]))
+		{
+			if (i != (*pd_filter_order))
+				HTS_error(1, "HTS_Engine_load_pd_filter_from_fn: read token is not a graph, file format error.\n");
+			break;
+		}
+
+		(*pd_filter)[i] = atof(buff);
+
+		i++;
+	}
+
+	fclose(pd_fp);
+}
+
+
+/************************************************************************************/
+/*                                                                                  */
+/* Mixed excitation end                                                             */
+/*                                                                                  */
+/*                                                                                  */
+/************************************************************************************/
+
 
 HTS_ENGINE_C_END;
 
