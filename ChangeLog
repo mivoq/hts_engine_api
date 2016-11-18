@@ -1,3 +1,8 @@
+2011-07-07 08:05  uratec
+
+	* ChangeLog, NEWS, README, configure.ac, include/HTS_engine.h,
+	  lib/HTS_engine.c: fix a tiny bug.  update all documents to 1.05.
+
 2011-06-16 13:31  uratec
 
 	* COPYING, ChangeLog, README, configure.ac, bin/hts_engine.c,
