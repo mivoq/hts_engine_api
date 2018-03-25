@@ -726,9 +726,9 @@ void HTS_Engine_clear(HTS_Engine * engine);
 
 #if !defined(AUDIO_PLAY_WINCE) && !defined(AUDIO_PLAY_WIN32) && !defined(AUDIO_PLAY_NONE)
 #if defined(__WINCE__) || defined(_WINCE) || defined(_WINCE) || defined(__WINCE)
-#define AUDIO_PLAY_WINCE
+#define AUDIO_PLAY_NONE
 #elif defined(__WIN32__) || defined(__WIN32) || defined(_WIN32) || defined(WIN32) || defined(__CYGWIN__) || defined(__MINGW32__)
-#define AUDIO_PLAY_WIN32
+#define AUDIO_PLAY_NONE
 #else
 #define AUDIO_PLAY_NONE
 #endif                          /* WINCE || WIN32 */
