@@ -66,7 +66,7 @@ AC_C_BIGENDIAN
 # Checks library for windows audio devices
 case "$host_os" in
  *win32* | *wince* | *cygwin* | *mingw* )
-	AC_HAVE_LIBRARY([winmm],,AC_MSG_ERROR(No winmm))
+	AC_HAVE_LIBRARY([winmm],,AC_MSG_RESULT(no))
 	;;
  *)
 	;;
